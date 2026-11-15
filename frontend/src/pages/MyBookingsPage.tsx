@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarX2, Clock } from 'lucide-react'
+import { Clock } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import * as Tabs from '@radix-ui/react-tabs'
 import { SlotPicker } from '@/components/SlotPicker'
-import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
+import { IllustrationCalendar } from '@/components/illustrations'
+import { BookingCardSkeleton, EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { StatusBadge } from '@/components/ui/badge'
@@ -14,6 +15,8 @@ import { Field, Textarea } from '@/components/ui/form'
 import { useBusiness } from '@/hooks/queries'
 import { api, ApiError } from '@/lib/api'
 import { fmtDateTime, money } from '@/lib/time'
+import { usePageTitle } from '@/lib/usePageTitle'
+import { cn } from '@/lib/utils'
 import type { Booking, CancellationQuote, Paged, Slot } from '@/lib/types'
 
 function CancelDialog({ booking, tz, onClose }: { booking: Booking; tz: string; onClose: () => void }) {
@@ -23,13 +26,13 @@ function CancelDialog({ booking, tz, onClose }: { booking: Booking; tz: string; 
   const cancel = useMutation({
     mutationFn: () => api(`/bookings/${booking.id}/cancel`, { method: 'POST', body: { reason: reason || null } }),
     onSuccess: () => { toast.success('Booking cancelled'); queryClient.invalidateQueries({ queryKey: ['my-bookings'] }); onClose() },
-    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not cancel'),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'The booking was not cancelled. Check your connection and try again.'),
   })
   return (
     <DialogContent title="Cancel this booking?" description={`${booking.serviceName} on ${fmtDateTime(booking.startUtc, tz)}`}>
       {quote.isLoading && <ListSkeleton rows={1} height="h-12" />}
       {quote.data && (
-        <p className={`rounded-lg p-3 text-sm ${quote.data.withinFreeWindow ? 'bg-emerald-50 text-emerald-900' : 'bg-amber-50 text-amber-900'}`}>
+        <p className={cn('rounded-control p-3 text-sm', quote.data.withinFreeWindow ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning')}>
           {quote.data.withinFreeWindow
             ? quote.data.refundCents > 0 ? `Free cancellation. ${money(quote.data.refundCents, booking.currency)} will be refunded to your card.` : 'Free cancellation.'
             : `Free cancellation ended ${fmtDateTime(quote.data.freeUntilUtc, tz)}. This payment will not be refunded.`}
@@ -50,7 +53,7 @@ function RescheduleDialog({ booking, tz, onClose }: { booking: Booking; tz: stri
   const move = useMutation({
     mutationFn: () => api(`/bookings/${booking.id}/reschedule`, { method: 'POST', body: { startUtc: slot!.startUtc, staffId: slot!.staffIds.includes(booking.staffId) ? booking.staffId : slot!.staffIds[0] } }),
     onSuccess: () => { toast.success('Booking rescheduled'); queryClient.invalidateQueries({ queryKey: ['my-bookings'] }); queryClient.invalidateQueries({ queryKey: ['slots'] }); onClose() },
-    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not reschedule'),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'The booking was not moved. Check your connection and try again.'),
   })
   return (
     <DialogContent className="max-w-3xl" title="Reschedule" description={`Currently ${fmtDateTime(booking.startUtc, tz)}`}>
@@ -68,17 +71,17 @@ function BookingCard({ b, tz, freeHours }: { b: Booking; tz: string; freeHours: 
   const active = (b.status === 'Confirmed' || b.status === 'Pending') && new Date(b.startUtc) > new Date()
   const canReschedule = active && new Date(b.startUtc).getTime() - Date.now() > freeHours * 3_600_000
   return (
-    <Card className="p-5 transition-shadow hover:shadow-md">
+    <Card className="p-5 transition-colors hover:border-foreground/30">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="font-semibold">{b.serviceName}</h3>
+          <h3 className="font-display text-lg font-semibold tracking-tight">{b.serviceName}</h3>
           <p className="text-sm text-muted-foreground">with {b.staffName}</p>
         </div>
         <StatusBadge status={b.status} />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
         <span className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-muted-foreground" aria-hidden />{fmtDateTime(b.startUtc, tz)}</span>
-        <span className="font-medium">{money(b.priceCents, b.currency)}</span>
+        <span className="font-medium tabular-nums">{money(b.priceCents, b.currency)}</span>
         <span className="text-xs text-muted-foreground">Ref {b.reference}</span>
       </div>
       {b.paymentStatus === 'Refunded' && <p className="mt-2 text-xs text-muted-foreground">Refunded {money(b.refundedCents, b.currency)}</p>}
@@ -103,10 +106,10 @@ function BookingList({ upcoming }: { upcoming: boolean }) {
     queryKey: ['my-bookings', upcoming, page],
     queryFn: () => api<Paged<Booking>>('/bookings/mine', { query: { upcoming, page, pageSize: 10, desc: !upcoming } }),
   })
-  if (query.isLoading) return <ListSkeleton />
+  if (query.isLoading) return <div className="space-y-3"><BookingCardSkeleton /><BookingCardSkeleton /></div>
   if (query.isError) return <ErrorState error={query.error} onRetry={() => query.refetch()} />
   if (!query.data || query.data.items.length === 0)
-    return <EmptyState icon={<CalendarX2 className="h-5 w-5" />} title={upcoming ? 'No upcoming bookings' : 'No past bookings'} description={upcoming ? 'Ready when you are.' : undefined} action={upcoming ? <Button asChild><Link to="/book">Book now</Link></Button> : undefined} />
+    return <EmptyState illustration={<IllustrationCalendar />} title={upcoming ? 'Nothing on the calendar' : 'No history yet'} description={upcoming ? 'Choose a service and a time and it will show up here.' : 'Finished and cancelled appointments will be listed here.'} action={upcoming ? <Button asChild><Link to="/book">Book an appointment</Link></Button> : undefined} />
   return (
     <div className="space-y-3">
       {query.data.items.map((b) => <BookingCard key={b.id} b={b} tz={business?.timeZoneId ?? 'UTC'} freeHours={business?.cancellationWindowHours ?? 24} />)}
@@ -122,16 +125,17 @@ function BookingList({ upcoming }: { upcoming: boolean }) {
 }
 
 export default function MyBookingsPage() {
+  usePageTitle('My bookings')
   return (
     <div className="container max-w-3xl py-10">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">My bookings</h1>
+        <h1 className="text-h1">My bookings</h1>
         <Button asChild><Link to="/book">New booking</Link></Button>
       </div>
       <Tabs.Root defaultValue="upcoming">
-        <Tabs.List className="mb-5 inline-flex rounded-lg bg-muted p-1" aria-label="Booking filter">
+        <Tabs.List className="mb-5 inline-flex rounded-control bg-muted p-1" aria-label="Booking filter">
           {[['upcoming', 'Upcoming'], ['past', 'Past & cancelled']].map(([v, l]) => (
-            <Tabs.Trigger key={v} value={v} className="rounded-md px-4 py-1.5 text-sm font-medium transition-all data-[state=active]:bg-card data-[state=active]:shadow-sm">{l}</Tabs.Trigger>
+            <Tabs.Trigger key={v} value={v} className="h-9 rounded-inner px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_0_0_1px_hsl(var(--border))]">{l}</Tabs.Trigger>
           ))}
         </Tabs.List>
         <Tabs.Content value="upcoming"><BookingList upcoming /></Tabs.Content>

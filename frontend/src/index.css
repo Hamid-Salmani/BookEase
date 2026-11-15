@@ -1,38 +1,128 @@
-@import '@fontsource-variable/manrope';
+@import '@fontsource-variable/fraunces';
+@import '@fontsource-variable/dm-sans';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  /*
+   * Palette: evergreen on warm paper. Every colour in the app comes from these
+   * HSL triplets; components only use the semantic tokens mapped in tailwind.config.js.
+   */
   :root {
-    --background: 60 14% 98%;
-    --foreground: 170 20% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 170 20% 10%;
-    --primary: 175 80% 26%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 165 18% 94%;
-    --secondary-foreground: 170 30% 16%;
-    --muted: 165 12% 94%;
-    --muted-foreground: 170 8% 38%;
-    --accent: 168 40% 92%;
-    --accent-foreground: 175 80% 20%;
-    --destructive: 0 72% 46%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 165 10% 88%;
-    --input: 165 10% 84%;
-    --ring: 175 80% 30%;
-    --radius: 0.75rem;
+    color-scheme: light;
+    --background: 40 24% 97%;
+    --foreground: 158 22% 11%;
+    --card: 40 30% 99%;
+    --card-foreground: 158 22% 11%;
+    --popover: 40 30% 99%;
+    --popover-foreground: 158 22% 11%;
+    --primary: 158 46% 22%;
+    --primary-foreground: 40 30% 97%;
+    --secondary: 40 16% 91%;
+    --secondary-foreground: 158 22% 16%;
+    --muted: 40 16% 93%;
+    --muted-foreground: 158 8% 36%;
+    --accent: 150 22% 91%;
+    --accent-foreground: 158 46% 18%;
+    --destructive: 8 62% 42%;
+    --destructive-foreground: 40 30% 98%;
+    --success: 152 54% 23%;
+    --success-foreground: 40 30% 98%;
+    --warning: 28 88% 27%;
+    --warning-foreground: 40 30% 98%;
+    --info: 205 62% 31%;
+    --info-foreground: 40 30% 98%;
+    --border: 38 14% 86%;
+    --input: 38 8% 54%;
+    --ring: 158 50% 32%;
+    --scrim: 158 30% 8%;
+    --chart-1: 158 46% 30%;
+    --chart-2: 18 62% 46%;
+    --chart-3: 38 78% 42%;
+    --chart-4: 210 40% 44%;
+    --chart-5: 330 30% 48%;
+    --radius-control: 0.5rem;
+    --radius-card: 0.75rem;
   }
+
+  .dark {
+    color-scheme: dark;
+    --background: 160 10% 8%;
+    --foreground: 40 14% 89%;
+    --card: 160 9% 11%;
+    --card-foreground: 40 14% 89%;
+    --popover: 160 9% 13%;
+    --popover-foreground: 40 14% 89%;
+    --primary: 156 38% 54%;
+    --primary-foreground: 160 24% 8%;
+    --secondary: 160 8% 16%;
+    --secondary-foreground: 40 14% 88%;
+    --muted: 160 8% 15%;
+    --muted-foreground: 40 8% 64%;
+    --accent: 158 22% 17%;
+    --accent-foreground: 156 40% 80%;
+    --destructive: 6 66% 66%;
+    --destructive-foreground: 160 20% 6%;
+    --success: 152 42% 62%;
+    --success-foreground: 160 20% 6%;
+    --warning: 36 80% 62%;
+    --warning-foreground: 160 20% 6%;
+    --info: 205 70% 70%;
+    --info-foreground: 160 20% 6%;
+    --border: 160 7% 19%;
+    --input: 160 6% 42%;
+    --ring: 156 45% 58%;
+    --scrim: 160 20% 3%;
+    --chart-1: 158 40% 56%;
+    --chart-2: 18 62% 62%;
+    --chart-3: 40 70% 58%;
+    --chart-4: 210 45% 66%;
+    --chart-5: 330 40% 68%;
+  }
+
   * { @apply border-border; }
-  body { @apply bg-background text-foreground antialiased; font-family: 'Manrope Variable', ui-sans-serif, system-ui, sans-serif; font-feature-settings: 'cv11', 'ss01'; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+    font-feature-settings: 'ss01', 'cv11';
+    text-rendering: optimizeLegibility;
+  }
+  h1, h2 { @apply font-display; }
+  /* One stroke weight for every lucide icon. */
+  svg.lucide { stroke-width: 1.75; }
+  input[type='number'] { -moz-appearance: textfield; }
+  input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  ::selection { background: hsl(var(--primary) / 0.22); }
+
   :focus-visible { @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background; }
+
+  /* Native scrollbars, themed. */
+  * { scrollbar-width: thin; scrollbar-color: hsl(var(--input) / 0.6) transparent; }
+  *::-webkit-scrollbar { width: 10px; height: 10px; }
+  *::-webkit-scrollbar-thumb { background: hsl(var(--input) / 0.55); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
+  *::-webkit-scrollbar-thumb:hover { background: hsl(var(--input)); background-clip: content-box; border: 3px solid transparent; }
+  *::-webkit-scrollbar-track { background: transparent; }
+
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
-.rdp { --rdp-cell-size: 44px; --rdp-accent-color: hsl(var(--primary)); --rdp-background-color: hsl(var(--accent)); margin: 0; }
-.rdp-day_selected:not([disabled]) { background-color: hsl(var(--primary)); color: white; }
-.rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: hsl(var(--accent)); }
-.rdp-day_today:not(.rdp-day_selected) { font-weight: 700; color: hsl(var(--primary)); }
+/* Added for a single frame-window while the theme flips, so only colours ease. */
+@media (prefers-reduced-motion: no-preference) {
+  html.theme-switching *, html.theme-switching *::before, html.theme-switching *::after {
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, fill 150ms ease, stroke 150ms ease !important;
+  }
+}
+
+/* Toasts: neutral surface, status shown by the icon colour. */
+[data-sonner-toast][data-type='success'] [data-icon] { color: hsl(var(--success)); }
+[data-sonner-toast][data-type='error'] [data-icon] { color: hsl(var(--destructive)); }
+[data-sonner-toast][data-type='warning'] [data-icon] { color: hsl(var(--warning)); }
+[data-sonner-toast][data-type='info'] [data-icon] { color: hsl(var(--info)); }

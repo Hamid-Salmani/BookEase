@@ -1,6 +1,7 @@
-import { BarChart3, CalendarDays, ClipboardList, Home, ListChecks, LogOut, Palmtree, Scissors, Settings, Users } from 'lucide-react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { BarChart3, CalendarDays, ClipboardList, ExternalLink, Home, ListChecks, LogOut, Palmtree, Scissors, Settings, Users } from 'lucide-react'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { Logo } from '@/components/layout'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/button'
 import { useBusiness } from '@/hooks/queries'
 import { useAuth } from '@/lib/auth'
@@ -29,7 +30,7 @@ export default function AdminLayout() {
         <div className="flex h-16 items-center px-5"><Logo name={business?.name} /></div>
         <nav aria-label="Admin" className="flex gap-1 overflow-x-auto px-3 pb-3 md:flex-col md:overflow-visible">
           {visible.map((i) => (
-            <NavLink key={i.to} to={i.to} end={i.end} className={({ isActive }) => cn('flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors', isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted')}>
+            <NavLink key={i.to} to={i.to} end={i.end} className={({ isActive }) => cn('flex min-h-10 shrink-0 items-center gap-2.5 rounded-control px-3 py-2 text-sm font-medium transition-colors', isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
               <i.icon className="h-4 w-4" aria-hidden />{i.label}
             </NavLink>
           ))}
@@ -40,7 +41,13 @@ export default function AdminLayout() {
           <Button variant="outline" size="sm" className="w-full" onClick={async () => { await logout(); navigate('/') }}><LogOut className="h-4 w-4" aria-hidden /> Sign out</Button>
         </div>
       </aside>
-      <main id="main" className="min-w-0 p-4 sm:p-8"><Outlet /></main>
+      <div className="min-w-0">
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-end gap-1 border-b bg-background/90 px-4 backdrop-blur sm:px-8">
+          <Button variant="ghost" size="sm" asChild><Link to="/"><ExternalLink className="h-4 w-4" aria-hidden /> View site</Link></Button>
+          <ThemeToggle />
+        </header>
+        <main id="main" className="p-4 sm:p-8"><Outlet /></main>
+      </div>
     </div>
   )
 }

@@ -12,6 +12,8 @@ export interface PublicConfig { stripePublishableKey?: string | null; demoPaymen
 export interface Service {
   id: string; name: string; description: string; durationMinutes: number; bufferMinutes: number
   priceCents: number; isActive: boolean; staffIds: string[]
+  /** Not sent by the API today; used when present. */
+  imageUrl?: string | null; category?: string | null
 }
 export interface Staff { id: string; name: string; title: string; bio?: string | null; isActive: boolean; serviceIds: string[] }
 export interface WorkingHours { dayOfWeek: number; startTime: string; endTime: string }

@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import * as Tabs from '@radix-ui/react-tabs'
 import { PaymentStep } from '@/components/PaymentStep'
 import { SlotPicker } from '@/components/SlotPicker'
+import { IllustrationList } from '@/components/illustrations'
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -14,6 +15,7 @@ import { useBusiness, usePublicConfig, useServices, useStaff } from '@/hooks/que
 import { api, ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { duration, fmtDateTime, money } from '@/lib/time'
+import { usePageTitle } from '@/lib/usePageTitle'
 import type { CreateBookingResponse, Slot } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { LoginForm, RegisterForm } from './AuthPages'
@@ -37,7 +39,7 @@ function Stepper({ step }: { step: number }) {
     <ol className="mb-8 flex items-center gap-2 overflow-x-auto" aria-label="Booking progress">
       {STEPS.map((label, i) => (
         <li key={label} className="flex items-center gap-2" aria-current={i === step ? 'step' : undefined}>
-          <span className={cn('flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors', i < step ? 'bg-primary text-primary-foreground' : i === step ? 'border-2 border-primary text-primary' : 'border text-muted-foreground')}>
+          <span className={cn('flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold tabular-nums transition-colors', i < step ? 'bg-primary text-primary-foreground' : i === step ? 'border-2 border-primary text-primary' : 'border text-muted-foreground')}>
             {i < step ? <Check className="h-4 w-4" aria-hidden /> : i + 1}
           </span>
           <span className={cn('hidden text-sm sm:inline', i === step ? 'font-semibold' : 'text-muted-foreground')}>{label}</span>
@@ -49,6 +51,7 @@ function Stepper({ step }: { step: number }) {
 }
 
 export default function BookPage() {
+  usePageTitle('Book an appointment')
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -77,23 +80,23 @@ export default function BookPage() {
     },
     onError: (e) => {
       if (e instanceof ApiError && e.status === 409) {
-        toast.error('Sorry, that time was just taken. Please pick another.')
+        toast.error('Someone just booked that time. Pick another and we will hold it for you.')
         setSlot(null)
         setStep(2)
         queryClient.invalidateQueries({ queryKey: ['slots'] })
         queryClient.invalidateQueries({ queryKey: ['month'] })
-      } else toast.error(e instanceof ApiError ? e.message : 'Could not create the booking')
+      } else toast.error(e instanceof ApiError ? e.message : 'The booking was not created. Check your connection and try again.')
     },
   })
 
   const summary = useMemo(() => (
     <Card className="p-5 lg:sticky lg:top-24">
-      <h2 className="text-sm font-semibold text-muted-foreground">Your booking</h2>
+      <h2 className="font-display text-h3">Your booking</h2>
       <dl className="mt-3 space-y-3 text-sm">
         <div><dt className="text-muted-foreground">Service</dt><dd className="font-medium">{service?.name ?? '-'}</dd></div>
         <div><dt className="text-muted-foreground">With</dt><dd className="font-medium">{service ? staffName ?? '-' : '-'}</dd></div>
         <div><dt className="text-muted-foreground">When</dt><dd className="font-medium">{slot ? fmtDateTime(slot.startUtc, tz) : '-'}</dd></div>
-        {service && <div className="flex items-center justify-between border-t pt-3"><dt className="flex items-center gap-1.5 text-muted-foreground"><Clock className="h-4 w-4" aria-hidden />{duration(service.durationMinutes)}</dt><dd className="text-base font-semibold">{money(service.priceCents, currency)}</dd></div>}
+        {service && <div className="flex items-center justify-between border-t pt-3"><dt className="flex items-center gap-1.5 text-muted-foreground"><Clock className="h-4 w-4" aria-hidden />{duration(service.durationMinutes)}</dt><dd className="text-base font-semibold tabular-nums text-primary">{money(service.priceCents, currency)}</dd></div>}
       </dl>
     </Card>
   ), [service, staffName, slot, tz, currency])
@@ -102,8 +105,8 @@ export default function BookPage() {
 
   return (
     <div className="container py-10">
-      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Book an appointment</h1>
-      <p className="mb-8 mt-1 text-muted-foreground">It only takes a minute.</p>
+      <h1 className="text-h1">Book an appointment</h1>
+      <p className="mb-8 mt-1 text-muted-foreground">Five short steps. Your time is held while you pay.</p>
       <Stepper step={step} />
       <div className="grid gap-8 lg:grid-cols-[1fr,320px]">
         <div className="animate-fade-up" key={step}>
@@ -112,14 +115,14 @@ export default function BookPage() {
               <h2 id="s0" className="mb-4 text-lg font-semibold">Choose a service</h2>
               {services.isLoading && <ListSkeleton />}
               {services.isError && <ErrorState error={services.error} onRetry={() => services.refetch()} />}
-              {services.data?.length === 0 && <EmptyState title="No services available" />}
+              {services.data?.length === 0 && <EmptyState illustration={<IllustrationList />} title="Nothing to book yet" description="No services are open for booking right now. Please check back soon." />}
               <div className="grid gap-3 sm:grid-cols-2">
                 {services.data?.map((s) => (
                   <button key={s.id} type="button" onClick={() => { setServiceId(s.id); setStaffId(null); setSlot(null); setStep(1) }}
-                    className={cn('rounded-xl border bg-card p-4 text-left transition-all hover:border-primary hover:shadow-sm', serviceId === s.id && 'border-primary ring-1 ring-primary')}>
-                    <div className="flex justify-between gap-2"><span className="font-semibold">{s.name}</span><span className="font-semibold text-primary">{money(s.priceCents, currency)}</span></div>
+                    className={cn('rounded-card border bg-card p-4 text-left transition-colors hover:border-primary', serviceId === s.id && 'border-primary ring-1 ring-primary')}>
+                    <div className="flex justify-between gap-2"><span className="font-display text-base font-semibold">{s.name}</span><span className="font-semibold tabular-nums text-primary">{money(s.priceCents, currency)}</span></div>
                     <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{s.description}</p>
-                    <p className="mt-2 text-xs text-muted-foreground">{duration(s.durationMinutes)}</p>
+                    <p className="mt-2 text-xs tabular-nums text-muted-foreground">{duration(s.durationMinutes)}</p>
                   </button>
                 ))}
               </div>
@@ -132,12 +135,12 @@ export default function BookPage() {
               {staff.isLoading && <ListSkeleton rows={3} height="h-16" />}
               {staff.isError && <ErrorState error={staff.error} onRetry={() => staff.refetch()} />}
               <div className="grid gap-3 sm:grid-cols-2">
-                <button type="button" onClick={() => { setStaffId(null); setSlot(null); setStep(2) }} className="flex items-center gap-3 rounded-xl border bg-card p-4 text-left transition-all hover:border-primary">
+                <button type="button" onClick={() => { setStaffId(null); setSlot(null); setStep(2) }} className="flex items-center gap-3 rounded-card border bg-card p-4 text-left transition-colors hover:border-primary">
                   <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-accent-foreground"><Users className="h-5 w-5" aria-hidden /></span>
                   <span><span className="block font-semibold">Any available</span><span className="text-sm text-muted-foreground">Maximum availability</span></span>
                 </button>
                 {staff.data?.map((m) => (
-                  <button key={m.id} type="button" onClick={() => { setStaffId(m.id); setSlot(null); setStep(2) }} className="flex items-center gap-3 rounded-xl border bg-card p-4 text-left transition-all hover:border-primary">
+                  <button key={m.id} type="button" onClick={() => { setStaffId(m.id); setSlot(null); setStep(2) }} className="flex items-center gap-3 rounded-card border bg-card p-4 text-left transition-colors hover:border-primary">
                     <span className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary font-semibold text-secondary-foreground">{m.name.split(' ').map((p) => p[0]).join('').slice(0, 2)}</span>
                     <span><span className="block font-semibold">{m.name}</span><span className="text-sm text-muted-foreground">{m.title}</span></span>
                   </button>
@@ -163,9 +166,9 @@ export default function BookPage() {
               {!user ? (
                 <Card className="p-5">
                   <Tabs.Root defaultValue="register">
-                    <Tabs.List className="mb-5 grid grid-cols-2 rounded-lg bg-muted p-1" aria-label="Account">
+                    <Tabs.List className="mb-5 grid grid-cols-2 rounded-control bg-muted p-1" aria-label="Account">
                       {[['register', 'New customer'], ['login', 'I have an account']].map(([v, l]) => (
-                        <Tabs.Trigger key={v} value={v} className="rounded-md px-3 py-2 text-sm font-medium transition-all data-[state=active]:bg-card data-[state=active]:shadow-sm">{l}</Tabs.Trigger>
+                        <Tabs.Trigger key={v} value={v} className="min-h-10 rounded-inner px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_0_0_1px_hsl(var(--border))]">{l}</Tabs.Trigger>
                       ))}
                     </Tabs.List>
                     <Tabs.Content value="register"><RegisterForm onDone={() => undefined} /></Tabs.Content>
@@ -193,8 +196,8 @@ export default function BookPage() {
               <h2 id="s4" className="text-lg font-semibold">Payment</h2>
               {secondsLeft > 0 ? (
                 <>
-                  <p role="timer" className="rounded-lg bg-accent px-4 py-2 text-sm text-accent-foreground">
-                    Your slot is held for <strong>{Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}</strong>
+                  <p role="timer" className="rounded-control bg-accent px-4 py-2 text-sm text-accent-foreground">
+                    Your slot is held for <strong className="tabular-nums">{Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}</strong>
                   </p>
                   <Card className="p-5">
                     <PaymentStep bookingId={created.booking.id} payment={created.payment} publishableKey={config?.stripePublishableKey} demo={config?.demoPayments ?? false}
@@ -202,7 +205,7 @@ export default function BookPage() {
                   </Card>
                 </>
               ) : (
-                <EmptyState title="Your hold has expired" description="The time slot was released. Please choose a time again." action={<Button onClick={() => { setCreated(null); setSlot(null); setStep(2) }}>Pick another time</Button>} />
+                <EmptyState title="Your hold ran out" description="The slot went back on the calendar before payment finished. Pick a time again to continue." action={<Button onClick={() => { setCreated(null); setSlot(null); setStep(2) }}>Pick another time</Button>} />
               )}
             </section>
           )}

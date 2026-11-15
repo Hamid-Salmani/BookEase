@@ -3,14 +3,17 @@ import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { PageHeader, Pagination } from './shared'
+import { ComboboxField, DateTimePicker } from '@/components/form'
+import { IllustrationAway } from '@/components/illustrations'
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { Field, Input, Select } from '@/components/ui/form'
+import { Field, Input } from '@/components/ui/form'
 import { useBusiness } from '@/hooks/queries'
 import { api, ApiError } from '@/lib/api'
 import { fmtDateTime, inputToUtc, todayInTz } from '@/lib/time'
 import type { Paged, Staff, TimeOff } from '@/lib/types'
+import { usePageTitle } from '@/lib/usePageTitle'
 
 function TimeOffForm({ staff, tz, onClose }: { staff: Staff[]; tz: string; onClose: () => void }) {
   const queryClient = useQueryClient()
@@ -22,16 +25,16 @@ function TimeOffForm({ staff, tz, onClose }: { staff: Staff[]; tz: string; onClo
   const save = useMutation({
     mutationFn: () => api('/admin/time-off', { method: 'POST', body: { staffId, startUtc: inputToUtc(start, tz), endUtc: inputToUtc(end, tz), reason: reason || null } }),
     onSuccess: () => { toast.success('Time off added'); queryClient.invalidateQueries({ queryKey: ['admin'] }); queryClient.invalidateQueries({ queryKey: ['slots'] }); queryClient.invalidateQueries({ queryKey: ['month'] }); onClose() },
-    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not save'),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'The time off was not saved. Check your connection and try again.'),
   })
   const invalid = !staffId || !start || !end || end <= start
   return (
     <DialogContent title="Add time off" description={`Times are in ${tz.replace('_', ' ')}.`}>
       <div className="space-y-4">
-        <Field label="Specialist" htmlFor="to-staff"><Select id="to-staff" value={staffId} onChange={(e) => setStaffId(e.target.value)}>{staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</Select></Field>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="From" htmlFor="to-start"><Input id="to-start" type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
-          <Field label="Until" htmlFor="to-end" error={end <= start ? 'Must be after the start' : undefined}><Input id="to-end" type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
+        <Field label="Specialist" htmlFor="to-staff"><ComboboxField id="to-staff" value={staffId} onValueChange={setStaffId} searchPlaceholder="Find a specialist" options={staff.map((s) => ({ value: s.id, label: s.name, description: s.title }))} /></Field>
+        <div className="grid gap-4">
+          <Field label="From" htmlFor="to-start"><DateTimePicker id="to-start" aria-label="From" tz={tz} value={start} onChange={setStart} /></Field>
+          <Field label="Until" htmlFor="to-end" error={end <= start ? 'Must be after the start' : undefined}><DateTimePicker id="to-end" aria-label="Until" min={start.slice(0, 10)} tz={tz} value={end} onChange={setEnd} invalid={end <= start} /></Field>
         </div>
         <Field label="Reason (optional)" htmlFor="to-reason"><Input id="to-reason" maxLength={200} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
         <div className="flex justify-end gap-2"><Button variant="ghost" onClick={onClose}>Cancel</Button><Button disabled={invalid} loading={save.isPending} onClick={() => save.mutate()}>Add</Button></div>
@@ -41,6 +44,7 @@ function TimeOffForm({ staff, tz, onClose }: { staff: Staff[]; tz: string; onClo
 }
 
 export default function TimeOffPage() {
+  usePageTitle('Time off')
   const { data: business } = useBusiness()
   const queryClient = useQueryClient()
   const tz = business?.timeZoneId ?? 'UTC'
@@ -52,23 +56,21 @@ export default function TimeOffPage() {
   const remove = useMutation({
     mutationFn: (id: string) => api(`/admin/time-off/${id}`, { method: 'DELETE' }),
     onSuccess: () => { toast.success('Removed'); queryClient.invalidateQueries({ queryKey: ['admin'] }); queryClient.invalidateQueries({ queryKey: ['slots'] }); queryClient.invalidateQueries({ queryKey: ['month'] }) },
-    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Could not delete'),
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : 'The time off was not removed. Check your connection and try again.'),
   })
   return (
     <>
       <PageHeader title="Time off" description="Block holidays and absences so they cannot be booked." actions={<Button disabled={!staff.data?.items.length} onClick={() => setAdding(true)}><Plus className="h-4 w-4" aria-hidden /> Add time off</Button>} />
-      <Select className="mb-4 max-w-xs" aria-label="Filter by specialist" value={staffId} onChange={(e) => { setStaffId(e.target.value); setPage(1) }}>
-        <option value="">All specialists</option>{staff.data?.items.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-      </Select>
+      <ComboboxField className="mb-4 max-w-xs" aria-label="Filter by specialist" emptyLabel="All specialists" searchPlaceholder="Find a specialist" value={staffId} onValueChange={(v) => { setStaffId(v); setPage(1) }} options={staff.data?.items.map((s) => ({ value: s.id, label: s.name, description: s.title })) ?? []} />
       {query.isError && <ErrorState error={query.error} onRetry={() => query.refetch()} />}
       {query.isLoading && <ListSkeleton rows={4} height="h-12" />}
-      {query.data?.items.length === 0 && <EmptyState title="No time off scheduled" />}
+      {query.data?.items.length === 0 && <EmptyState illustration={<IllustrationAway />} title="Nobody is away" description="Holidays and absences you add here are blocked from booking." action={<Button variant="outline" disabled={!staff.data?.items.length} onClick={() => setAdding(true)}>Add time off</Button>} />}
       {query.data && query.data.items.length > 0 && (
-        <div className="overflow-hidden rounded-xl border bg-card">
+        <div className="overflow-hidden rounded-card border bg-card">
           <ul className="divide-y">
             {query.data.items.map((t) => (
               <li key={t.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                <div><p className="font-medium">{t.staffName}{t.reason && <span className="font-normal text-muted-foreground"> &middot; {t.reason}</span>}</p><p className="text-sm text-muted-foreground">{fmtDateTime(t.startUtc, tz)} &rarr; {fmtDateTime(t.endUtc, tz)}</p></div>
+                <div><p className="font-medium">{t.staffName}{t.reason && <span className="font-normal text-muted-foreground"> &middot; {t.reason}</span>}</p><p className="text-sm tabular-nums text-muted-foreground">{fmtDateTime(t.startUtc, tz)} &rarr; {fmtDateTime(t.endUtc, tz)}</p></div>
                 <Button variant="ghost" size="icon" aria-label="Delete time off" onClick={() => remove.mutate(t.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
               </li>
             ))}

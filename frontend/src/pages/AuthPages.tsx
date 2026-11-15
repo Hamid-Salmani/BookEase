@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Field, Input } from '@/components/ui/form'
 import { ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import { usePageTitle } from '@/lib/usePageTitle'
 
 const loginSchema = z.object({ email: z.string().email('Enter a valid email'), password: z.string().min(1, 'Password is required') })
 const registerSchema = z.object({
@@ -37,7 +38,7 @@ export function LoginForm({ onDone }: { onDone: (role: string) => void }) {
       <Field label="Password" htmlFor="login-password" error={errors.password?.message}>
         <Input id="login-password" type="password" autoComplete="current-password" aria-invalid={!!errors.password} {...register('password')} />
       </Field>
-      {error && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
+      {error && <p role="alert" className="rounded-control bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
       <Button type="submit" className="w-full" loading={isSubmitting}>Sign in</Button>
     </form>
   )
@@ -75,7 +76,7 @@ export function RegisterForm({ onDone }: { onDone: () => void }) {
       <Field label="Password" htmlFor="reg-password" error={errors.password?.message} hint="At least 8 characters with a letter and a digit">
         <Input id="reg-password" type="password" autoComplete="new-password" aria-invalid={!!errors.password} {...register('password')} />
       </Field>
-      {error && <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
+      {error && <p role="alert" className="rounded-control bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
       <Button type="submit" className="w-full" loading={isSubmitting}>Create account</Button>
     </form>
   )
@@ -85,7 +86,7 @@ function AuthShell({ title, subtitle, children, footer }: { title: string; subti
   return (
     <div className="container flex justify-center py-12 sm:py-20">
       <Card className="w-full max-w-md animate-fade-up p-6 sm:p-8">
-        <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+        <h1 className="text-h1">{title}</h1>
         <p className="mb-6 mt-1 text-sm text-muted-foreground">{subtitle}</p>
         {children}
         <div className="mt-6 text-center text-sm text-muted-foreground">{footer}</div>
@@ -95,17 +96,19 @@ function AuthShell({ title, subtitle, children, footer }: { title: string; subti
 }
 
 export function LoginPage() {
+  usePageTitle('Sign in')
   const navigate = useNavigate()
   const from = (useLocation().state as { from?: string } | null)?.from
   return (
-    <AuthShell title="Welcome back" subtitle="Sign in to manage your bookings." footer={<>New here? <Link className="font-medium text-primary hover:underline" to="/register" state={{ from }}>Create an account</Link></>}>
+    <AuthShell title="Welcome back" subtitle="Sign in to see, move or cancel your appointments." footer={<>New here? <Link className="font-medium text-primary hover:underline" to="/register" state={{ from }}>Create an account</Link></>}>
       <LoginForm onDone={(role) => navigate(from ?? (role === 'Customer' ? '/my-bookings' : '/admin'), { replace: true })} />
-      <p className="mt-4 rounded-lg bg-muted p-3 text-xs text-muted-foreground">Demo: customer@demo.com / Customer123! &middot; admin@demo.com / Admin123!</p>
+      <p className="mt-4 rounded-control bg-muted p-3 text-xs text-muted-foreground">Demo: customer@demo.com / Customer123! &middot; admin@demo.com / Admin123!</p>
     </AuthShell>
   )
 }
 
 export function RegisterPage() {
+  usePageTitle('Create an account')
   const navigate = useNavigate()
   const from = (useLocation().state as { from?: string } | null)?.from
   return (

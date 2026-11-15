@@ -2,7 +2,7 @@
 
 A full-stack appointment booking platform: customers pick a service and a time, pay online with Stripe, and receive email confirmations; the business manages everything from a role-protected admin dashboard.
 
-**Stack:** .NET 8 Web API (Clean Architecture) · EF Core + SQLite (PostgreSQL-ready) · JWT + refresh tokens · Stripe.net · MailKit · React 18 + TypeScript + Vite · Tailwind + shadcn-style components · TanStack Query · React Hook Form + Zod · Recharts · Docker · GitHub Actions.
+**Stack:** .NET 8 Web API (Clean Architecture) · EF Core + SQLite (PostgreSQL-ready) · JWT + refresh tokens · Stripe.net · MailKit · React 18 + TypeScript + Vite · Tailwind + shadcn/ui-style components (Radix, cmdk, react-day-picker), Fraunces + DM Sans · TanStack Query · React Hook Form + Zod · Recharts · Docker · GitHub Actions.
 
 ## Features
 
@@ -37,10 +37,10 @@ Requires .NET 8 SDK and Node 20+.
 
 ```bash
 # API  -> http://localhost:5080   (Development profile: seed data, Swagger, dev JWT key, simulated payments)
-dotnet run --project backend/src/BookEase.Api
+dotnet run --project src/BookEase.Api
 
 # Web  -> http://localhost:5173   (proxies /api to the API)
-cd frontend && npm install && npm run dev
+cd client && npm install && npm run dev
 ```
 
 For emails locally, run Mailpit (`docker run -p 8025:8025 -p 1025:1025 axllent/mailpit`) - the Development SMTP default is `localhost:1025`.
@@ -48,8 +48,8 @@ For emails locally, run Mailpit (`docker run -p 8025:8025 -p 1025:1025 axllent/m
 ### Tests and build
 
 ```bash
-dotnet test backend/BookEase.sln # unit + integration (WebApplicationFactory)
-cd frontend && npm run build     # type-check + production build
+dotnet test                      # 50 tests: unit + integration (WebApplicationFactory)
+cd client && npm run build       # type-check + production build
 ```
 
 ## Demo credentials
@@ -80,7 +80,7 @@ Simulated payments are refused when a Stripe secret key is configured, and refus
 
 ## Configuration
 
-All settings are standard ASP.NET configuration and can be overridden by environment variables using `__` (e.g. `Jwt__Key`). See `backend/src/BookEase.Api/appsettings.json`.
+All settings are standard ASP.NET configuration and can be overridden by environment variables using `__` (e.g. `Jwt__Key`). See `src/BookEase.Api/appsettings.json`.
 
 | Key | Purpose |
 |---|---|
@@ -93,6 +93,8 @@ All settings are standard ASP.NET configuration and can be overridden by environ
 | `Cors:AllowedOrigins`, `App:FrontendUrl` | Browser access and links in emails |
 | `BackgroundJobs:Enabled` | Turn the workers off (tests do) |
 
+Client build-time settings (`client/.env.example`): `VITE_API_URL` (empty = same-origin `/api`) and `VITE_WEEK_STARTS_ON` (`0` = Sunday … `6` = Saturday, default `1` = Monday, matching the server's week).
+
 Business rules edited at runtime in **Admin > Settings**: time zone, currency, free-cancellation window, minimum notice, maximum advance, slot interval.
 
 ### Switching to PostgreSQL
@@ -104,18 +106,34 @@ ConnectionStrings__Default=Host=...;Database=bookease;Username=...;Password=...
 
 The committed EF migration targets SQLite. For other providers the app creates the schema with `EnsureCreated` on first start; to use migrations with PostgreSQL, generate a provider-specific migration set (`dotnet ef migrations add Initial_Pg ...`).
 
+## Design decisions
+
+The UI/UX pass touched `client/` only; no API, backend logic or query contract changed.
+
+- **Palette.** One brand hue (evergreen, HSL ~158) with warm-tinted neutrals in light and cool-tinted charcoal in dark. Every color is an HSL CSS variable in `src/index.css`, mapped in `tailwind.config.js` (including `success`, `warning`, `info`, `chart-1..5`, `scrim`). No pure black or white; elevated surfaces are lighter in dark mode. Input borders and `destructive` are tuned for WCAG AA in both themes.
+- **Dark mode.** Class-based, Light / Dark / System (default System). Choice is stored in `localStorage` under `bookease.theme`. An inline script in `index.html` sets the class before first paint (no flash). Colors cross-fade for 150 ms via a temporary `html.theme-switching` class; `prefers-reduced-motion` disables motion. Toggle lives in the admin header and the public navbar. Charts, toasts, scrollbars and Stripe Elements read the same tokens.
+- **Type.** Fraunces (display, headings) + DM Sans (body), self-hosted via `@fontsource-variable`, tabular numbers for prices, times and tables, a named type scale (`text-h1`, `h2`, `h3`, `stat`, `display`).
+- **Shape.** One radius system (`rounded-control` 8px, `rounded-card` 12px, `rounded-inner` 6px), 1px borders, lucide icons at one stroke width (1.75).
+- **No native pickers.** `<select>`, date, time, datetime-local, checkbox and radio inputs are gone. Replacements live in `src/components/form` (`SelectField`, `ComboboxField` + `MultiComboboxField`, `DatePicker`, `DateRangePicker`, `TimeSelect`, `DateTimePicker`, `FilterBar`) and `src/components/ui` (Checkbox, RadioGroup, Switch, Popover, Command, Calendar, Sheet).
+- **Same data shapes.** Dates stay `yyyy-MM-dd`, date-times `yyyy-MM-ddTHH:mm` (converted with the existing `inputToUtc`), query params and TanStack Query keys are unchanged. "Today" and the range presets (Today / Next 7 days / This month / Last 30 days / Custom) are computed in the **business time zone**, not the browser's.
+- **Select "All" option.** Radix Select forbids empty-string items, so the "All …" choice uses the internal sentinel `__all__`, mapped back to `''` before it reaches state or the API.
+- **Week start.** Configurable through `VITE_WEEK_STARTS_ON`, default Monday.
+- **FilterBar.** One 40px-high row on desktop (>= 1024px); on mobile it collapses into a "Filters" bottom sheet. Active filters appear as removable chips with "Clear all".
+- **Confirmations.** `window.confirm` was replaced by a themed `ConfirmDialog`.
+- **Logo, images, categories.** The API has no logo, service image or category fields, and the backend was out of scope. The client therefore uses a monogram `BrandMark` from the business name, a generated pattern fallback in `ServiceImage`, and optional `imageUrl` / `category` fields on the `Service` type: if the API ever returns them they are used (services group by category), otherwise services are grouped as one list.
+- **Empty and loading states.** Every list page has an inline-SVG empty state and a skeleton matching its layout.
+- **Titles and meta.** Per-route document titles, description / theme-color / Open Graph tags, and a new SVG favicon replace the Vite defaults.
+
 ## Architecture
 
 ```
-backend/
-  BookEase.sln
-  src/
-    BookEase.Domain          entities, enums, booking state machine (no dependencies)
-    BookEase.Application     use cases, DTOs, validators, availability engine, abstractions
-    BookEase.Infrastructure  EF Core, security, Stripe, MailKit, background workers
-    BookEase.Api             controllers, middleware, DI composition
-  tests/BookEase.Tests       unit + integration tests
-frontend/                    React SPA
+src/
+  BookEase.Domain          entities, enums, booking state machine (no dependencies)
+  BookEase.Application     use cases, DTOs, validators, availability engine, abstractions
+  BookEase.Infrastructure  EF Core, security, Stripe, MailKit, background workers
+  BookEase.Api             controllers, middleware, DI composition
+tests/BookEase.Tests       unit + integration tests
+client/                    React SPA
 ```
 
 Dependencies point inwards. The Application layer defines interfaces (`IPaymentGateway`, `IEmailSender`, `IClock`, ...) that Infrastructure implements. It uses EF Core directly through `IAppDbContext` instead of a repository layer (see assumptions).

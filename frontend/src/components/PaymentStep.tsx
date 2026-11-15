@@ -5,6 +5,7 @@ import { useMutation } from '@tanstack/react-query'
 import { Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { api, ApiError } from '@/lib/api'
+import { tokenToHex, useTheme } from '@/lib/theme'
 import { money } from '@/lib/time'
 import type { PaymentIntentInfo } from '@/lib/types'
 
@@ -33,7 +34,7 @@ function StripeForm({ bookingId, amount, currency, onPaid }: { bookingId: string
           redirect: 'if_required',
         })
         setBusy(false)
-        if (result.error) setError(result.error.message ?? 'Payment failed')
+        if (result.error) setError(result.error.message ?? 'The payment did not go through. Check the card details or try another card.')
         else onPaid()
       }}
     >
@@ -49,19 +50,31 @@ export function PaymentStep({ bookingId, payment, publishableKey, demo, onPaid }
     mutationFn: () => api(`/payments/demo/${payment.paymentIntentId}/succeed`, { method: 'POST' }),
     onSuccess: onPaid,
   })
+  const { resolved } = useTheme()
   if (publishableKey && !demo) {
+    const appearance = {
+      theme: resolved === 'dark' ? ('night' as const) : ('stripe' as const),
+      variables: {
+        colorPrimary: tokenToHex('primary'),
+        colorBackground: tokenToHex('card'),
+        colorText: tokenToHex('foreground'),
+        colorDanger: tokenToHex('destructive'),
+        fontFamily: '"DM Sans Variable", system-ui, sans-serif',
+        borderRadius: '8px',
+      },
+    }
     return (
-      <Elements stripe={getStripe(publishableKey)} options={{ clientSecret: payment.clientSecret, appearance: { theme: 'stripe', variables: { colorPrimary: '#0f766e', borderRadius: '10px' } } }}>
+      <Elements stripe={getStripe(publishableKey)} options={{ clientSecret: payment.clientSecret, appearance }}>
         <StripeForm bookingId={bookingId} amount={payment.amountCents} currency={payment.currency} onPaid={onPaid} />
       </Elements>
     )
   }
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-        <strong>Demo payments.</strong> Stripe keys are not configured, so no real payment form is shown. The button below simulates a successful payment webhook.
+      <div className="rounded-control border border-warning/30 bg-warning/10 p-4 text-sm text-warning">
+        <strong>Demo payments.</strong> No Stripe keys are set, so there is no card form here. The button below simulates a successful payment.
       </div>
-      {demoPay.isError && <p role="alert" className="text-sm text-destructive">{demoPay.error instanceof ApiError ? demoPay.error.message : 'Payment failed'}</p>}
+      {demoPay.isError && <p role="alert" className="text-sm text-destructive">{demoPay.error instanceof ApiError ? demoPay.error.message : 'The payment did not go through. Try again in a moment.'}</p>}
       <Button size="lg" className="w-full" loading={demoPay.isPending} onClick={() => demoPay.mutate()}>
         <Lock className="h-4 w-4" aria-hidden /> Simulate payment of {money(payment.amountCents, payment.currency)}
       </Button>

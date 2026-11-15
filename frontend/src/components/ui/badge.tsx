@@ -2,19 +2,26 @@ import type { HTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 import type { BookingStatus } from '@/lib/types'
 
-export const Badge = ({ className, ...p }: HTMLAttributes<HTMLSpanElement>) => (
-  <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium', className)} {...p} />
+export type BadgeTone = 'neutral' | 'success' | 'warning' | 'info' | 'danger'
+
+const tones: Record<BadgeTone, string> = {
+  neutral: 'bg-muted text-muted-foreground',
+  success: 'bg-success/15 text-success',
+  warning: 'bg-warning/15 text-warning',
+  info: 'bg-info/15 text-info',
+  danger: 'bg-destructive/15 text-destructive',
+}
+
+export const Badge = ({ className, tone = 'neutral', ...p }: HTMLAttributes<HTMLSpanElement> & { tone?: BadgeTone }) => (
+  <span
+    className={cn('inline-flex items-center gap-1.5 whitespace-nowrap rounded-inner px-2 py-0.5 text-xs font-medium before:h-1.5 before:w-1.5 before:rounded-full before:bg-current', tones[tone], className)}
+    {...p}
+  />
 )
 
-const styles: Record<BookingStatus, string> = {
-  Pending: 'border-amber-200 bg-amber-50 text-amber-800',
-  Confirmed: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  Cancelled: 'border-stone-200 bg-stone-100 text-stone-600',
-  Completed: 'border-sky-200 bg-sky-50 text-sky-800',
-  NoShow: 'border-rose-200 bg-rose-50 text-rose-800',
-}
+const statusTone: Record<BookingStatus, BadgeTone> = { Pending: 'warning', Confirmed: 'success', Cancelled: 'neutral', Completed: 'info', NoShow: 'danger' }
 const labels: Record<BookingStatus, string> = { Pending: 'Awaiting payment', Confirmed: 'Confirmed', Cancelled: 'Cancelled', Completed: 'Completed', NoShow: 'No-show' }
 
 export const StatusBadge = ({ status, admin }: { status: BookingStatus; admin?: boolean }) => (
-  <Badge className={styles[status]}>{admin && status === 'Pending' ? 'Pending' : labels[status]}</Badge>
+  <Badge tone={statusTone[status]}>{admin && status === 'Pending' ? 'Pending' : labels[status]}</Badge>
 )

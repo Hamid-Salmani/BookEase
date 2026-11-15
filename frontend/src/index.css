@@ -1,0 +1,38 @@
+@import '@fontsource-variable/manrope';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 60 14% 98%;
+    --foreground: 170 20% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 170 20% 10%;
+    --primary: 175 80% 26%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 165 18% 94%;
+    --secondary-foreground: 170 30% 16%;
+    --muted: 165 12% 94%;
+    --muted-foreground: 170 8% 38%;
+    --accent: 168 40% 92%;
+    --accent-foreground: 175 80% 20%;
+    --destructive: 0 72% 46%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 165 10% 88%;
+    --input: 165 10% 84%;
+    --ring: 175 80% 30%;
+    --radius: 0.75rem;
+  }
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground antialiased; font-family: 'Manrope Variable', ui-sans-serif, system-ui, sans-serif; font-feature-settings: 'cv11', 'ss01'; }
+  :focus-visible { @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+}
+
+.rdp { --rdp-cell-size: 44px; --rdp-accent-color: hsl(var(--primary)); --rdp-background-color: hsl(var(--accent)); margin: 0; }
+.rdp-day_selected:not([disabled]) { background-color: hsl(var(--primary)); color: white; }
+.rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: hsl(var(--accent)); }
+.rdp-day_today:not(.rdp-day_selected) { font-weight: 700; color: hsl(var(--primary)); }
